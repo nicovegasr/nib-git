@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nib — mockups UX</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#10151c; --panel2:#0a0e14; --border:#222b36;
+    --fg:#c9d1d9; --dim:#6e7781; --green:#3fb950; --blue:#58a6ff;
+    --yellow:#d29922; --red:#f85149; --magenta:#bc8cff; --cyan:#39c5cf;
+    --accent:#3fb950; --sel:#1f6feb33;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#05080c; color:var(--fg);
+    font-family:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    font-size:13px; line-height:1.5; padding:40px 20px;
+  }
+  h1{font-family:-apple-system,system-ui,sans-serif;font-weight:700;font-size:26px;margin:0 0 4px}
+  .lead{font-family:-apple-system,system-ui,sans-serif;color:var(--dim);margin:0 0 32px;max-width:720px}
+  .grid{display:flex;flex-direction:column;gap:40px;max-width:920px;margin:0 auto}
+  .case{}
+  .case-h{font-family:-apple-system,system-ui,sans-serif;font-size:15px;font-weight:600;margin:0 0 2px;display:flex;align-items:center;gap:8px}
+  .case-d{font-family:-apple-system,system-ui,sans-serif;color:var(--dim);font-size:12.5px;margin:0 0 12px}
+  .tag{font-family:-apple-system,system-ui,sans-serif;font-size:10px;font-weight:700;letter-spacing:.5px;
+    padding:2px 7px;border-radius:5px;text-transform:uppercase}
+  .tag.mouse{background:#1f6feb22;color:var(--blue);border:1px solid #1f6feb55}
+  .tag.kbd{background:#3fb95022;color:var(--green);border:1px solid #3fb95055}
+  .tag.alt{background:#bc8cff22;color:var(--magenta);border:1px solid #bc8cff55}
+
+  /* terminal window */
+  .term{background:var(--bg);border:1px solid var(--border);border-radius:10px;overflow:hidden;
+    box-shadow:0 12px 40px #0008}
+  .bar{background:#161b22;padding:9px 14px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--border)}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .dot.r{background:#ff5f56}.dot.y{background:#ffbd2e}.dot.g{background:#27c93f}
+  .bar-t{margin-left:8px;color:var(--dim);font-size:11px}
+  .scr{padding:14px 16px}
+
+  .row{display:flex;gap:14px}
+  .col{flex:1;min-width:0}
+
+  /* panels inside terminal */
+  .box{border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:12px;background:var(--panel2)}
+  .box-t{color:var(--dim);font-size:11px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+  .box-t .hint{color:#475160}
+
+  /* file list */
+  .file{display:flex;align-items:center;gap:9px;padding:2px 5px;border-radius:4px;cursor:pointer}
+  .file:hover{background:#1f6feb18}
+  .file.on{background:var(--sel)}
+  .chk{width:14px;display:inline-block;text-align:center}
+  .chk.y{color:var(--green)}.chk.n{color:#3a424d}
+  .st{width:16px;font-weight:700}
+  .st.M{color:var(--yellow)}.st.A{color:var(--green)}.st.D{color:var(--red)}.st.U{color:var(--cyan)}
+  .fn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .num{color:var(--dim);font-size:11px}
+  .focus{outline:1px solid var(--green);outline-offset:-1px}
+
+  /* git log */
+  .log .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .h{color:var(--yellow)} .b{color:var(--magenta)} .a{color:var(--cyan)} .t{color:var(--dim)}
+  .graph{color:var(--red)}
+
+  /* commit line */
+  .cl{display:flex;align-items:stretch;gap:0;border:1px solid #2d3748;border-radius:8px;overflow:hidden;background:#0a0e14}
+  .cl.active{border-color:var(--green);box-shadow:0 0 0 1px var(--green)}
+  .dd{display:flex;align-items:center;gap:6px;padding:9px 12px;background:#11161e;border-right:1px solid #2d3748;
+    color:var(--green);font-weight:700;cursor:pointer;white-space:nowrap}
+  .dd .ar{color:var(--dim);font-weight:400}
+  .msg{flex:1;padding:9px 12px;color:var(--fg);display:flex;align-items:center;gap:1px}
+  .ph{color:#475160}
+  .cur{display:inline-block;width:7px;height:15px;background:var(--green);animation:bl 1s steps(1) infinite;vertical-align:middle}
+  @keyframes bl{50%{opacity:0}}
+  .send{padding:9px 14px;background:#16351f;color:var(--green);border-left:1px solid #2d3748;font-weight:700;white-space:nowrap}
+
+  /* dropdown open */
+  .menu{border:1px solid #2d3748;border-radius:8px;background:#0a0e14;overflow:hidden;margin-top:6px;width:340px}
+  .mi{display:flex;gap:10px;padding:6px 12px;cursor:pointer}
+  .mi:hover,.mi.sel{background:#1f6feb22}
+  .mi.sel{background:#3fb95022;box-shadow:inset 2px 0 0 var(--green)}
+  .mi .k{color:var(--green);font-weight:700;width:64px}
+  .mi .ds{color:var(--dim)}
+
+  /* status / footer line */
+  .foot{display:flex;justify-content:space-between;color:var(--dim);font-size:11px;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+  .keys{display:flex;gap:14px;flex-wrap:wrap}
+  .key b{color:var(--fg);background:#1c232d;padding:1px 6px;border-radius:4px;border:1px solid #2d3748;font-size:10.5px}
+  kbd{color:var(--fg);background:#1c232d;padding:1px 6px;border-radius:4px;border:1px solid #2d3748;font-size:11px}
+
+  .note{font-family:-apple-system,system-ui,sans-serif;font-size:12px;color:var(--dim);margin-top:10px;
+    border-left:2px solid #2d3748;padding-left:12px}
+  .note b{color:var(--fg)}
+  .warn{border-left-color:var(--yellow)}.warn b{color:var(--yellow)}
+
+  /* settings rows */
+  .set{display:flex;align-items:center;justify-content:space-between;padding:7px 4px;border-bottom:1px solid #161b22}
+  .set:last-child{border-bottom:none}
+  .set .lbl{}.set .sub{color:var(--dim);font-size:11px}
+  .tg{font-weight:700}.tg.on{color:var(--green)}.tg.off{color:var(--dim)}
+  .slash{color:var(--blue)}
+  hr.sp{border:none;border-top:1px dashed #222b36;margin:18px 0}
+  .legend{font-family:-apple-system,system-ui,sans-serif;font-size:12px;color:var(--dim);display:flex;gap:18px;flex-wrap:wrap;margin-bottom:8px}
+  .legend span b{color:var(--fg)}
+</style>
+</head>
+<body>
+
+<h1>nib — mockups de UX</h1>
+<p class="lead">Mismos datos, dos formas de interactuar. Compara el coste de cada gesto. Todo lo "pesado" (git log, audit) se puede apagar en <span class="slash">/settings</span>. El <b>flujo mínimo irreducible</b> es la línea de commit de abajo: desplegable de tipo + mensaje.</p>
+
+<div class="grid">
+
+<!-- ============ CASO 1: MODO RATÓN (rico) ============ -->
+<div class="case">
+  <div class="case-h"><span class="tag mouse">Modo ratón</span> Vista completa — click para todo</div>
+  <div class="case-d">Click en un archivo lo stagea/quita. Click en el desplegable elige tipo. Git log visible a la derecha. Es la vista "rica por defecto".</div>
+  <div class="term">
+    <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="bar-t">nib — ~/Development/projects/nib-git</span></div>
+    <div class="scr">
+      <div class="row">
+        <div class="col">
+          <div class="box">
+            <div class="box-t"><span>CAMBIOS &nbsp;<span style="color:var(--green)">3 staged</span> · 2 sin stage</span><span class="hint">click = stage</span></div>
+            <div class="file on"><span class="chk y">✓</span><span class="st M">M</span><span class="fn">src/model/commit.go</span><span class="num">+42 −8</span></div>
+            <div class="file on"><span class="chk y">✓</span><span class="st A">A</span><span class="fn">src/ui/commitline.go</span><span class="num">+120</span></div>
+            <div class="file on"><span class="chk y">✓</span><span class="st M">M</span><span class="fn">README.md</span><span class="num">+5 −1</span></div>
+            <div class="file"><span class="chk n">○</span><span class="st M">M</span><span class="fn">go.mod</span><span class="num">+1</span></div>
+            <div class="file"><span class="chk n">○</span><span class="st U">?</span><span class="fn">notes.todo</span><span class="num">new</span></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="box log">
+            <div class="box-t"><span>GIT LOG · rama actual</span><span class="hint">/settings → off</span></div>
+            <div class="l"><span class="graph">●</span> <span class="h">a1b2c3d</span> <span class="b">(HEAD)</span> feat: commit line inline <span class="a">nico</span> <span class="t">2h</span></div>
+            <div class="l"><span class="graph">●</span> <span class="h">9f8e7d6</span> refactor: split model <span class="a">nico</span> <span class="t">5h</span></div>
+            <div class="l"><span class="graph">●</span> <span class="h">3c2b1a0</span> chore: bubbletea init <span class="a">nico</span> <span class="t">1d</span></div>
+            <div class="l"><span class="graph">●</span> <span class="h">7d6e5f4</span> docs: readme scaffold <span class="a">nico</span> <span class="t">1d</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- commit line -->
+      <div class="cl active">
+        <div class="dd"><span style="color:var(--dim)">tipo</span> feat <span class="ar">▾</span></div>
+        <div class="msg">add inline type dropdown to commit line<span class="cur"></span></div>
+        <div class="send">⏎ commit</div>
+      </div>
+
+      <div class="foot">
+        <span>3 archivos → <span style="color:var(--green)">feat: add inline type dropdown to commit line.</span></span>
+        <span>click <kbd>desplegable</kbd> o <kbd>/settings</kbd></span>
+      </div>
+    </div>
+  </div>
+  <p class="note warn"><b>Coste oculto del ratón:</b> capturar clicks secuestra la selección de texto y el scroll nativos de la terminal (sobre todo en la terminal integrada de VSCode). Por eso el mouse-capture será desactivable en <span class="slash">/settings</span>.</p>
+</div>
+
+<!-- ============ CASO 2: DESPLEGABLE ABIERTO ============ -->
+<div class="case">
+  <div class="case-h"><span class="tag mouse">Modo ratón</span> Desplegable de tipo abierto</div>
+  <div class="case-d">Al hacer click (o pulsar la inicial), se despliegan los 13 tipos de tu <code>git-commits.zsh</code>. Cada uno con su atajo de letra para el modo teclado.</div>
+  <div class="term">
+    <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="bar-t">nib</span></div>
+    <div class="scr">
+      <div class="cl active">
+        <div class="dd"><span style="color:var(--dim)">tipo</span> feat <span class="ar">▴</span></div>
+        <div class="msg"><span class="ph">escribe el mensaje…</span></div>
+        <div class="send">⏎</div>
+      </div>
+      <div class="menu">
+        <div class="mi sel"><span class="k">feat</span><span class="ds">Nueva funcionalidad</span></div>
+        <div class="mi"><span class="k">fix</span><span class="ds">Corrección de bug</span></div>
+        <div class="mi"><span class="k">red</span><span class="ds">TDD · test roto / WIP</span></div>
+        <div class="mi"><span class="k">green</span><span class="ds">TDD · tests pasan</span></div>
+        <div class="mi"><span class="k">refactor</span><span class="ds">Sin cambio de comportamiento</span></div>
+        <div class="mi"><span class="k">hotfix</span><span class="ds">Urgente en producción</span></div>
+        <div class="mi"><span class="k">docs</span><span class="ds">Documentación</span></div>
+        <div class="mi"><span class="k">chore</span><span class="ds">Mantenimiento / tooling</span></div>
+        <div class="mi"><span style="color:var(--dim)">·</span><span class="ds" style="color:#475160">style · tests · perf · ci · build</span></div>
+      </div>
+      <div class="foot"><span>scroll o click para elegir</span><span>en teclado: <kbd>f</kbd> salta a feat</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CASO 3: MODO TECLADO ============ -->
+<div class="case">
+  <div class="case-h"><span class="tag kbd">Modo teclado</span> Mismo flujo, cero ratón</div>
+  <div class="case-d">Navegas con <kbd>j</kbd>/<kbd>k</kbd>, marcas con <kbd>espacio</kbd>, saltas al tipo con <kbd>tab</kbd> y eliges con la inicial. La mano nunca sale del teclado. Más rápido para quien teclea fluido.</div>
+  <div class="term">
+    <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="bar-t">nib — modo teclado</span></div>
+    <div class="scr">
+      <div class="box">
+        <div class="box-t"><span>CAMBIOS <span style="color:var(--green)">2 staged</span> · 3 sin stage</span><span class="hint">j/k mover · espacio marcar</span></div>
+        <div class="file on"><span class="chk y">✓</span><span class="st M">M</span><span class="fn">src/model/commit.go</span><span class="num">+42 −8</span></div>
+        <div class="file on focus"><span class="chk y">✓</span><span class="st A">A</span><span class="fn">src/ui/commitline.go</span><span class="num">+120</span><span class="num" style="color:var(--green);margin-left:8px">◀ cursor</span></div>
+        <div class="file"><span class="chk n">○</span><span class="st M">M</span><span class="fn">README.md</span><span class="num">+5 −1</span></div>
+        <div class="file"><span class="chk n">○</span><span class="st M">M</span><span class="fn">go.mod</span><span class="num">+1</span></div>
+        <div class="file"><span class="chk n">○</span><span class="st U">?</span><span class="fn">notes.todo</span><span class="num">new</span></div>
+      </div>
+
+      <div class="cl">
+        <div class="dd"><span style="color:var(--dim)">tipo</span> feat <span class="ar">▾</span></div>
+        <div class="msg"><span class="ph">tab → escribe el mensaje · enter para commit</span></div>
+        <div class="send">⏎</div>
+      </div>
+
+      <div class="foot">
+        <div class="keys">
+          <span class="key"><b>j/k</b> mover</span>
+          <span class="key"><b>espacio</b> stage</span>
+          <span class="key"><b>a</b> stage todo</span>
+          <span class="key"><b>tab</b> ir al mensaje</span>
+          <span class="key"><b>f/r/g…</b> tipo</span>
+          <span class="key"><b>⏎</b> commit</span>
+          <span class="key"><b>/</b> comandos</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="note"><b>Comparación de gestos</b> para commitear 2 archivos como <code>feat</code>:<br>
+  · Ratón: click archivo · click archivo · click desplegable · click "feat" · click campo · teclear · enter → <b>4 clicks + mano va y vuelve al teclado</b><br>
+  · Teclado: <kbd>espacio</kbd> <kbd>j</kbd> <kbd>espacio</kbd> <kbd>tab</kbd> <kbd>f</kbd> teclear <kbd>⏎</kbd> → <b>0 clicks, mano fija</b></p>
+</div>
+
+<!-- ============ CASO 4: SOLO LÍNEA (modo óptimo) ============ -->
+<div class="case">
+  <div class="case-h"><span class="tag alt">Modo óptimo</span> Todo lo visual apagado en /settings</div>
+  <div class="case-d">Si el git log o el mouse-capture te ralentizan, los apagas y queda <b>solo el flujo mínimo</b>: lista compacta + la línea. Esto es lo que vuela.</div>
+  <div class="term">
+    <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="bar-t">nib — lean</span></div>
+    <div class="scr">
+      <div style="margin-bottom:10px">
+        <div class="file on"><span class="chk y">✓</span><span class="st M">M</span><span class="fn">src/model/commit.go</span></div>
+        <div class="file on"><span class="chk y">✓</span><span class="st A">A</span><span class="fn">src/ui/commitline.go</span></div>
+        <div class="file"><span class="chk n">○</span><span class="st M">M</span><span class="fn">go.mod</span></div>
+      </div>
+      <div class="cl active">
+        <div class="dd"><span style="color:var(--dim)">tipo</span> feat <span class="ar">▾</span></div>
+        <div class="msg">inline commit line<span class="cur"></span></div>
+        <div class="send">⏎</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CASO 5: /audit ============ -->
+<div class="case">
+  <div class="case-h"><span class="tag alt">Comando</span> <span class="slash">/audit --days 30</span></div>
+  <div class="case-d">Hotspots ordenados por <b>nº de commits</b> (señal primaria). Las líneas acompañan como contexto. <code>.auditignore</code> ya excluye lockfiles/dist.</div>
+  <div class="term">
+    <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="bar-t">nib — /audit</span></div>
+    <div class="scr">
+      <div class="box-t" style="margin-bottom:10px"><span style="color:var(--blue)">/audit --days 30 --exclude notes.todo</span><span class="hint">ordenado por commits ▾</span></div>
+      <table style="width:100%;border-collapse:collapse">
+        <tr style="color:var(--dim);font-size:11px;text-align:left"><th style="padding:3px 0">ARCHIVO</th><th>COMMITS</th><th>±LÍNEAS</th><th>SEÑAL</th></tr>
+        <tr><td style="padding:4px 0">src/ui/commitline.go</td><td style="color:var(--red);font-weight:700">23</td><td class="num">+412 −380</td><td><span style="color:var(--red)">●●●●●</span> refactor?</td></tr>
+        <tr><td style="padding:4px 0">src/model/commit.go</td><td style="color:var(--yellow);font-weight:700">18</td><td class="num">+210 −150</td><td><span style="color:var(--yellow)">●●●●</span> vigilar</td></tr>
+        <tr><td style="padding:4px 0">src/settings/store.go</td><td style="color:var(--yellow);font-weight:700">11</td><td class="num">+90 −40</td><td><span style="color:var(--yellow)">●●●</span></td></tr>
+        <tr><td style="padding:4px 0">README.md</td><td class="num">6</td><td class="num">+120 −12</td><td><span style="color:var(--dim)">●●</span> ok</td></tr>
+        <tr><td style="padding:4px 0">go.mod</td><td class="num">3</td><td class="num">+14 −2</td><td><span style="color:var(--dim)">●</span> ok</td></tr>
+      </table>
+      <div class="foot"><span><span style="color:var(--dim)">excluidos por .auditignore:</span> *.lock, dist/, package-lock.json</span><span>v0.2: commits × tamaño = hotspot real</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CASO 6: /settings ============ -->
+<div class="case">
+  <div class="case-h"><span class="tag alt">Comando</span> <span class="slash">/settings</span> — válvulas de escape</div>
+  <div class="case-d">"Rico por defecto, todo lo pesado se apaga". Aquí controlas qué se dibuja y cómo interactúas.</div>
+  <div class="term">
+    <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="bar-t">nib — /settings</span></div>
+    <div class="scr">
+      <div class="set"><div><div class="lbl">Panel git log visual</div><div class="sub">Apágalo si va lento</div></div><div class="tg on">ON ●</div></div>
+      <div class="set"><div><div class="lbl">Mouse capture (click en archivos)</div><div class="sub">Off = recuperas selección/scroll nativos del terminal</div></div><div class="tg on">ON ●</div></div>
+      <div class="set"><div><div class="lbl">git log: alcance</div><div class="sub">rama actual / todas las ramas / comando custom</div></div><div class="tg" style="color:var(--blue)">rama actual ▾</div></div>
+      <div class="set"><div><div class="lbl">/audit · ventana por defecto</div><div class="sub">últimos N días</div></div><div class="tg" style="color:var(--blue)">30 días ▾</div></div>
+      <div class="set"><div><div class="lbl">/audit · umbral "refactor?"</div><div class="sub">commits que disparan alerta roja</div></div><div class="tg" style="color:var(--blue)">≥ 20 ▾</div></div>
+      <div class="set"><div><div class="lbl">.auditignore</div><div class="sub">*.lock, dist/, package-lock.json, node_modules/</div></div><div class="tg" style="color:var(--blue)">editar ▸</div></div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<p style="text-align:center;color:#475160;font-family:-apple-system,system-ui,sans-serif;font-size:12px;margin-top:40px">
+mockup estático · nib-git · borrar tras revisar
+</p>
+</body>
+</html>

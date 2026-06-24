@@ -1,0 +1,9 @@
+# Files excluded from /audit hotspots — high-churn by design, not code smells.
+# One glob per line. Defaults are also applied internally; this file adds to them.
+*.lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+dist/
+build/
+node_modules/
