@@ -7,10 +7,28 @@
 pre-commit:
   parallel: false
   commands:
+    no-commit-to-main:
+      # Local guard: never commit directly to main. The real gate is the
+      # GitHub branch ruleset; this is just a fast local safety net.
+      run: |
+        branch="$(git rev-parse --abbrev-ref HEAD)"
+        if [ "$branch" = "main" ]; then
+          echo "✋ Direct commits to main are not allowed. Create a branch:"
+          echo "   git switch -c <type>/<name>"
+          exit 1
+        fi
     check:
       run: make check
 
 pre-push:
+  parallel: false
   commands:
+    no-push-to-main:
+      run: |
+        branch="$(git rev-parse --abbrev-ref HEAD)"
+        if [ "$branch" = "main" ]; then
+          echo "✋ Direct pushes to main are not allowed. Open a PR instead."
+          exit 1
+        fi
     cover:
       run: make cover
