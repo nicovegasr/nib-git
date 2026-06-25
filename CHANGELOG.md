@@ -9,6 +9,10 @@ later goal — ADR-0004.)
 
 ### Added
 
+- Minimal commit flow (Phase 1): file list + inline commit line wired to git
+  through an injected `Repo` port (ADR-0005). Keyboard path (`j/k`, `space`,
+  type shortcuts, `tab`, `enter`), commit result reported, transitions tested.
+
 - Quality harness: `Makefile` gate, `golangci-lint` config, `lefthook` git
   hooks, GitHub Actions CI, and a Claude Code `gofmt` hook (ADR-0001, 0003).
 - Per-package coverage gate at 80% for domain packages (`scripts/coverage.sh`,

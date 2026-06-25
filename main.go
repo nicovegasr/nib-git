@@ -11,11 +11,20 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/nicovegasr/nib-git/internal/git"
 	"github.com/nicovegasr/nib-git/internal/ui"
 )
 
+// gitRepo adapts the git package to the ui.Repo port injected into the model.
+type gitRepo struct{}
+
+func (gitRepo) Status() ([]git.FileChange, error) { return git.Status() }
+func (gitRepo) Stage(files []string) error        { return git.Stage(files) }
+func (gitRepo) Commit(subject string) error       { return git.Commit(subject) }
+
 func main() {
-	p := tea.NewProgram(ui.New(), tea.WithAltScreen(), tea.WithMouseCellMotion())
+	model := ui.New(gitRepo{})
+	p := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "nib:", err)
 		os.Exit(1)
