@@ -1,6 +1,11 @@
 // Package ui holds the Bubble Tea model for the minimal commit flow:
 // mark files → pick type → type message → enter. It depends on a narrow Repo
 // port (ADR-0005) so the state transitions are testable without real git.
+//
+// Phase 2 adds three focus zones (Files → Type → Message), an openable type
+// dropdown, and mouse clicks. Picking a type auto-advances to the message so
+// the keyboard hot path stays a single `tab` + letter. The type shortcut only
+// fires while the Type zone is focused, keeping it predictable.
 package ui
 
 import (
@@ -21,6 +26,15 @@ type Repo interface {
 	Commit(subject string) error
 }
 
+// zone is the part of the UI currently driving the keyboard.
+type zone int
+
+const (
+	zoneFiles zone = iota
+	zoneType
+	zoneMessage
+)
+
 // commitDoneMsg reports the outcome of a commit attempt.
 type commitDoneMsg struct{ err error }
 
@@ -32,7 +46,9 @@ type Model struct {
 	cursor   int
 	typeIdx  int    // index into commit.Types
 	message  string // commit message being typed
-	focusMsg bool   // true once the user tabbed into the message field
+	focus    zone   // which zone owns the keyboard
+	dropOpen bool   // type dropdown expanded
+	dropIdx  int    // highlighted item while the dropdown is open
 	done     bool   // commit succeeded; ready to quit
 	err      error
 
@@ -84,18 +100,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case tea.KeyMsg:
 		return m.updateKey(msg)
+	case tea.MouseMsg:
+		return m.updateMouse(msg)
 	}
-	// TODO(mouse): handle tea.MouseMsg clicks on files / dropdown (Phase 2).
 	return m, nil
 }
 
 func (m Model) updateKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
-	if m.focusMsg {
+	if key.String() == "ctrl+c" {
+		return m, tea.Quit
+	}
+	switch m.focus {
+	case zoneFiles:
+		return m.updateFiles(key)
+	case zoneType:
+		return m.updateType(key)
+	default:
 		return m.updateMessage(key)
 	}
+}
 
+func (m Model) updateFiles(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch key.String() {
-	case "q", "ctrl+c":
+	case "q":
 		return m, tea.Quit
 	case "j", "down":
 		if m.cursor < len(m.files)-1 {
@@ -110,22 +137,79 @@ func (m Model) updateKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 			p := m.files[m.cursor].Path
 			m.staged[p] = !m.staged[p]
 		}
-	case "tab": // jump to the message field
-		m.focusMsg = true
+	case "tab":
+		m.focus = zoneType
+	case "shift+tab":
+		m.focus = zoneMessage
 	case "enter":
 		return m, m.commit()
+	}
+	return m, nil
+}
+
+// updateType drives the type zone: the dropdown is a discoverable cheat-sheet,
+// while the letter shortcut stays the expert path. Selecting a type (letter or
+// dropdown) auto-advances to the message field.
+func (m Model) updateType(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.dropOpen {
+		switch key.String() {
+		case "j", "down":
+			if m.dropIdx < len(commit.Types)-1 {
+				m.dropIdx++
+			}
+		case "k", "up":
+			if m.dropIdx > 0 {
+				m.dropIdx--
+			}
+		case "enter", " ":
+			return m.pickType(m.dropIdx), nil
+		case "esc":
+			m.dropOpen = false
+		default:
+			if idx, ok := m.shortcuts[key.String()]; ok {
+				return m.pickType(idx), nil
+			}
+		}
+		return m, nil
+	}
+
+	switch key.String() {
+	case "q":
+		return m, tea.Quit
+	case "down", "enter", " ":
+		m.dropOpen = true
+		m.dropIdx = m.typeIdx
+	case "tab":
+		m.focus = zoneMessage
+	case "shift+tab":
+		m.focus = zoneFiles
+	case "esc":
+		m.focus = zoneFiles
 	default:
 		if idx, ok := m.shortcuts[key.String()]; ok {
-			m.typeIdx = idx
+			return m.pickType(idx), nil
 		}
 	}
 	return m, nil
 }
 
+// pickType selects a commit type, closes the dropdown, and advances focus to
+// the message field so the hand never leaves the keyboard.
+func (m Model) pickType(idx int) Model {
+	m.typeIdx = idx
+	m.dropOpen = false
+	m.focus = zoneMessage
+	return m
+}
+
 func (m Model) updateMessage(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch key.String() {
 	case "esc":
-		m.focusMsg = false
+		m.focus = zoneType
+	case "tab":
+		m.focus = zoneFiles
+	case "shift+tab":
+		m.focus = zoneType
 	case "enter":
 		return m, m.commit()
 	case "backspace":
@@ -136,6 +220,47 @@ func (m Model) updateMessage(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if len(key.String()) == 1 {
 			m.message += key.String()
 		}
+	}
+	return m, nil
+}
+
+// updateMouse handles left clicks (mapped through hitTest) and the wheel, which
+// scrolls the open dropdown. The mouse-capture toggle lives in /settings
+// (Phase 4); here it is always on (main.go enables it).
+func (m Model) updateMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	if m.dropOpen && msg.Button == tea.MouseButtonWheelUp {
+		if m.dropIdx > 0 {
+			m.dropIdx--
+		}
+		return m, nil
+	}
+	if m.dropOpen && msg.Button == tea.MouseButtonWheelDown {
+		if m.dropIdx < len(commit.Types)-1 {
+			m.dropIdx++
+		}
+		return m, nil
+	}
+	if msg.Action != tea.MouseActionRelease || msg.Button != tea.MouseButtonLeft {
+		return m, nil
+	}
+
+	h := m.hitTest(msg.X, msg.Y)
+	switch h.kind {
+	case hitFile:
+		m.cursor = h.idx
+		m.focus = zoneFiles
+		p := m.files[h.idx].Path
+		m.staged[p] = !m.staged[p]
+	case hitType:
+		m.focus = zoneType
+		m.dropOpen = !m.dropOpen
+		m.dropIdx = m.typeIdx
+	case hitDropItem:
+		return m.pickType(h.idx), nil
+	case hitMessage:
+		m.focus = zoneMessage
+	case hitNone:
+		m.dropOpen = false
 	}
 	return m, nil
 }
@@ -166,6 +291,73 @@ func (m Model) commit() tea.Cmd {
 	}
 }
 
+// --- layout & hit-testing -------------------------------------------------
+//
+// layout is the SINGLE source of the row geometry: View() draws with it and
+// hitTest() reads it, so a click can never drift from what is rendered.
+
+const headerRows = 2 // title + blank line above the file list
+
+type layout struct {
+	filesStart int // row of the first file
+	fileCount  int
+	commitRow  int // the "[ type ▾ ] message" line (type and message share it)
+	dropStart  int // first dropdown item row (only meaningful when open)
+}
+
+func (m Model) layout() layout {
+	n := len(m.files)
+	commitRow := headerRows + n + 1 // one blank line between files and the commit line
+	return layout{
+		filesStart: headerRows,
+		fileCount:  n,
+		commitRow:  commitRow,
+		dropStart:  commitRow + 1,
+	}
+}
+
+type hitKind int
+
+const (
+	hitNone hitKind = iota
+	hitFile
+	hitType
+	hitMessage
+	hitDropItem
+)
+
+type hit struct {
+	kind hitKind
+	idx  int // file or dropdown-item index, when relevant
+}
+
+// hitTest maps a click to a target. Y selects the row; only on the commit line
+// does X split the type box from the message field.
+func (m Model) hitTest(x, y int) hit {
+	l := m.layout()
+	if y >= l.filesStart && y < l.filesStart+l.fileCount {
+		return hit{hitFile, y - l.filesStart}
+	}
+	if m.dropOpen && y >= l.dropStart && y < l.dropStart+len(commit.Types) {
+		return hit{hitDropItem, y - l.dropStart}
+	}
+	if y == l.commitRow {
+		if x < typeBoxWidth(commit.Types[m.typeIdx].Name) {
+			return hit{kind: hitType}
+		}
+		return hit{kind: hitMessage}
+	}
+	return hit{kind: hitNone}
+}
+
+// typeBoxWidth is the display width of the leading "▸[ name ▾ ] " on the commit
+// line, in columns. Used by both View() and hitTest() to agree on where the
+// type box ends and the message begins.
+func typeBoxWidth(name string) int {
+	// "▸" + "[ " + name + " " + "▾" + " ] " = 1 + 2 + len + 1 + 1 + 3
+	return len([]rune(name)) + 8
+}
+
 // View implements tea.Model. See docs/ux-mockups.html for the target layout.
 func (m Model) View() string {
 	if m.err != nil {
@@ -178,22 +370,68 @@ func (m Model) View() string {
 	var b strings.Builder
 	b.WriteString("  nib — cambios\n\n")
 	for i, f := range m.files {
-		cursor := " "
-		if i == m.cursor {
-			cursor = ">"
+		marker := " "
+		if m.focus == zoneFiles && i == m.cursor {
+			marker = "▸"
 		}
 		mark := "○"
 		if m.staged[f.Path] {
 			mark = "✓"
 		}
-		fmt.Fprintf(&b, " %s %s %c %s\n", cursor, mark, f.Status, f.Path)
+		fmt.Fprintf(&b, "%s %s %c %s\n", marker, mark, f.Status, f.Path)
 	}
+
+	b.WriteString("\n")
+	b.WriteString(m.commitLine())
+	b.WriteString("\n")
+	if m.dropOpen {
+		b.WriteString(m.dropdownView())
+	}
+	fmt.Fprintf(&b, "\n %s\n", m.helpLine())
+	return b.String()
+}
+
+func (m Model) commitLine() string {
 	t := commit.Types[m.typeIdx]
+	marker := " "
+	if m.focus == zoneType {
+		marker = "▸"
+	}
+	arrow := "▾"
+	if m.dropOpen {
+		arrow = "▴"
+	}
 	msg := m.message
 	if msg == "" {
 		msg = "(escribe el mensaje)"
 	}
-	fmt.Fprintf(&b, "\n [ %s ▾ ] %s\n", t.Name, msg)
-	b.WriteString("\n j/k mover · espacio stage · letra tipo · tab mensaje · enter commit · q salir\n")
+	if m.focus == zoneMessage {
+		msg = m.message + "_"
+	}
+	return fmt.Sprintf("%s[ %s %s ] %s", marker, t.Name, arrow, msg)
+}
+
+func (m Model) dropdownView() string {
+	var b strings.Builder
+	for i, t := range commit.Types {
+		sel := " "
+		if i == m.dropIdx {
+			sel = "▸"
+		}
+		fmt.Fprintf(&b, "%s %-9s %s\n", sel, t.Name, t.Desc)
+	}
 	return b.String()
+}
+
+func (m Model) helpLine() string {
+	switch {
+	case m.focus == zoneType && m.dropOpen:
+		return "j/k mover · enter elige · esc cierra"
+	case m.focus == zoneType:
+		return "letra elige tipo · ↓ abre lista · tab mensaje · esc atrás"
+	case m.focus == zoneMessage:
+		return "escribe · enter commit · esc atrás · tab archivos"
+	default:
+		return "j/k mover · espacio stage · tab tipo · enter commit · q salir"
+	}
 }
