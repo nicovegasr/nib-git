@@ -33,8 +33,14 @@ than the Source Control panel or lazygit/gitui (both tried, neither fit). It is
   file list + inline commit line through an injected `Repo` port (ADR-0005).
   Keyboard path: `j/k` move, `space` stage, type shortcuts, `tab` to message,
   `enter` commit, result reported. Transitions covered by tests. *MVP.*
-- [ ] **Phase 2 — type dropdown + mouse.** Open/close dropdown, select type;
-  mouse clicks on files and dropdown. `tea.MouseMsg` handling.
+- [x] **Phase 2 — type dropdown + mouse.** Three focus zones (Files → Type →
+  Message, `tab`/`shift+tab` cycle); hybrid type dropdown (letter instant-select
+  only in the Type zone, `↓`/`enter`/`space`/click opens the cheat-sheet,
+  picking auto-advances to Message); `tea.MouseMsg` clicks via a pure
+  `hitTest`, wheel scrolls the open dropdown. `layout()` is the single source of
+  the row geometry shared by `View()` and `hitTest()`. `▸` marks the active zone
+  + contextual help line. See the closed grill decisions in this file's history
+  and `internal/ui/model_test.go`.
 - [ ] **Phase 3 — git-log panel.** Optional right-side log, `LogScope`
   current/all/custom. Off-by-toggle.
 - [ ] **Phase 4 — `/settings`.** Command palette + persisted TOML
