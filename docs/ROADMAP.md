@@ -29,10 +29,10 @@ than the Source Control panel or lazygit/gitui (both tried, neither fit). It is
 
 - [x] **Phase 0 — scaffold.** Structure, commit/git/audit/stats/settings
   packages, skeleton UI, mockups, CLAUDE.md. (current)
-- [ ] **Phase 1 — minimal commit flow (the core).** Wire `internal/ui` to a
-  real render of the file list + inline commit line. Keyboard path first:
-  `j/k` move, `space` stage, `tab` to message, type shortcuts, `enter` commit.
-  Ship a working `nib` that commits. *This alone is the MVP.*
+- [x] **Phase 1 — minimal commit flow (the core).** `internal/ui` wired to the
+  file list + inline commit line through an injected `Repo` port (ADR-0005).
+  Keyboard path: `j/k` move, `space` stage, type shortcuts, `tab` to message,
+  `enter` commit, result reported. Transitions covered by tests. *MVP.*
 - [ ] **Phase 2 — type dropdown + mouse.** Open/close dropdown, select type;
   mouse clicks on files and dropdown. `tea.MouseMsg` handling.
 - [ ] **Phase 3 — git-log panel.** Optional right-side log, `LogScope`

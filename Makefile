@@ -42,7 +42,7 @@ vet: ## Run go vet.
 
 .PHONY: lint
 lint: ## Run golangci-lint (see .golangci.yml).
-	golangci-lint run
+	PATH="$$(go env GOPATH)/bin:$$PATH" golangci-lint run
 
 .PHONY: check
 check: fmt-check vet lint test ## Fast gate: format + vet + lint + test (pre-commit & CI).
