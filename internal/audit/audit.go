@@ -25,14 +25,26 @@ func Run(days int, exclude []string) ([]Hotspot, error) {
 	ignore := loadAuditIgnore()
 	ignore = append(ignore, exclude...)
 
-	out, err := exec.Command("git", "log",
-		"--since", itoaDays(days), "--name-only", "--pretty=format:").Output()
+	out, err := gitLogNames(days)
 	if err != nil {
 		return nil, err
 	}
+	return rank(out, ignore), nil
+}
 
+// gitLogNames returns the changed file paths (one per line) over the window.
+// Package var so tests can stub the shell-out and exercise rank directly.
+var gitLogNames = func(days int) (string, error) {
+	out, err := exec.Command("git", "log",
+		"--since", itoaDays(days), "--name-only", "--pretty=format:").Output()
+	return string(out), err
+}
+
+// rank counts commits per file path, drops ignored paths, and orders by
+// descending commit frequency (the hotspot signal).
+func rank(out string, ignore []string) []Hotspot {
 	counts := map[string]int{}
-	for _, line := range strings.Split(string(out), "\n") {
+	for _, line := range strings.Split(out, "\n") {
 		path := strings.TrimSpace(line)
 		if path == "" || isIgnored(path, ignore) {
 			continue
@@ -47,7 +59,7 @@ func Run(days int, exclude []string) ([]Hotspot, error) {
 	sort.Slice(hotspots, func(i, j int) bool {
 		return hotspots[i].Commits > hotspots[j].Commits
 	})
-	return hotspots, nil
+	return hotspots
 }
 
 func itoaDays(d int) string {
