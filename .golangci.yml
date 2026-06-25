@@ -1,0 +1,44 @@
+# golangci-lint configuration for nib-git.
+# "Recommended" linter set: enforces naming, unhandled errors, dead code and
+# bounded complexity without the noise of the strict set.
+version: "2"
+
+run:
+  timeout: 3m
+
+linters:
+  default: none
+  enable:
+    - govet
+    - staticcheck   # includes gosimple + stylecheck in v2
+    - revive        # naming / style
+    - errcheck      # unchecked errors
+    - ineffassign   # ineffective assignments
+    - unused        # dead code
+    - gocyclo       # cyclomatic complexity
+    # misspell intentionally omitted: user-facing strings are Spanish by
+    # design (see CLAUDE.md), and misspell only understands English.
+
+  settings:
+    gocyclo:
+      min-complexity: 15
+    revive:
+      rules:
+        - name: exported
+        - name: var-naming
+        - name: error-naming
+        - name: error-return
+        - name: receiver-naming
+        - name: package-comments
+
+  exclusions:
+    rules:
+      # Tests may be less strict about complexity and exported docs.
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - revive
+
+formatters:
+  enable:
+    - gofmt

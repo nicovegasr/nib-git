@@ -67,7 +67,9 @@ func Log(scope string, limit int) (string, error) {
 	return run(args...)
 }
 
-func run(args ...string) (string, error) {
+// run executes git with the given args. It is a package var so tests can stub
+// the shell-out and exercise the parsing without a real repository.
+var run = func(args ...string) (string, error) {
 	out, err := exec.Command("git", args...).Output()
 	return string(out), err
 }
