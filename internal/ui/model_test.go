@@ -280,27 +280,41 @@ func TestCommitStageErrorIsReported(t *testing.T) {
 	}
 }
 
-func TestCommitDoneMsgDrivesQuitOrError(t *testing.T) {
-	m, _ := sampleModel()
+func TestCommitSuccessRefreshesAndStaysOpen(t *testing.T) {
+	m, repo := sampleModel()
+	m.message = "algo roto"
+	// Simulate the tree after the commit landed.
+	repo.status = []git.FileChange{{Path: "left.go", Status: 'M', Staged: false}}
 
-	// Success: marks done and quits.
 	next, cmd := m.Update(commitDoneMsg{})
 	dm := next.(Model)
-	if !dm.done {
-		t.Error("successful commit should set done")
-	}
-	if cmd == nil {
-		t.Error("successful commit should return a quit command")
-	}
 
-	// Failure: surfaces the error, no quit.
-	next, cmd = m.Update(commitDoneMsg{err: errors.New("nope")})
+	// Must not quit (persistent session). If a cmd is returned it must not be Quit.
+	if cmd != nil {
+		if _, isQuit := cmd().(tea.QuitMsg); isQuit {
+			t.Fatal("commit success must not quit the persistent session")
+		}
+	}
+	if dm.message != "" {
+		t.Errorf("message should reset after commit, got %q", dm.message)
+	}
+	if dm.flash == "" {
+		t.Error("commit success should set a feedback flash")
+	}
+	if len(dm.files) != 1 || dm.files[0].Path != "left.go" {
+		t.Errorf("files should refresh from repo.Status, got %+v", dm.files)
+	}
+}
+
+func TestCommitFailureKeepsOpenWithError(t *testing.T) {
+	m, _ := sampleModel()
+	next, cmd := m.Update(commitDoneMsg{err: errors.New("nope")})
 	em := next.(Model)
 	if em.err == nil {
 		t.Error("failed commit should set err")
 	}
 	if cmd != nil {
-		t.Error("failed commit should not quit")
+		t.Error("failed commit should not return a command")
 	}
 }
 

@@ -49,7 +49,7 @@ type Model struct {
 	focus    zone   // which zone owns the keyboard
 	dropOpen bool   // type dropdown expanded
 	dropIdx  int    // highlighted item while the dropdown is open
-	done     bool   // commit succeeded; ready to quit
+	flash    string // transient success feedback, cleared on the next keystroke
 	err      error
 
 	shortcuts map[string]int // type shortcut key -> index into commit.Types
@@ -96,8 +96,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = msg.err
 			return m, nil
 		}
-		m.done = true
-		return m, tea.Quit
+		// Persistent session (ADR-0007): refresh state, never quit.
+		m.message = ""
+		m.flash = "✓ commit creado"
+		files, err := m.repo.Status()
+		if err != nil {
+			m.err = err
+			return m, nil
+		}
+		m.files = files
+		m.staged = map[string]bool{}
+		for _, f := range files {
+			if f.Staged {
+				m.staged[f.Path] = true
+			}
+		}
+		if m.cursor >= len(files) {
+			m.cursor = 0
+		}
+		return m, nil
 	case tea.KeyMsg:
 		return m.updateKey(msg)
 	case tea.MouseMsg:
@@ -107,6 +124,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
+	m.flash = "" // any keystroke dismisses the success flash
 	if key.String() == "ctrl+c" {
 		return m, tea.Quit
 	}
@@ -362,9 +380,6 @@ func typeBoxWidth(name string) int {
 func (m Model) View() string {
 	if m.err != nil {
 		return "nib: " + m.err.Error() + "\n"
-	}
-	if m.done {
-		return "nib: commit creado.\n"
 	}
 
 	var b strings.Builder
