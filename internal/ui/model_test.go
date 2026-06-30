@@ -50,13 +50,32 @@ func send(m Model, s string) (Model, tea.Cmd) {
 	return next.(Model), cmd
 }
 
-func sampleModel() (Model, *fakeRepo) {
+type fakeLogger struct {
+	out      string
+	err      error
+	scopeArg string
+	limitArg int
+}
+
+func (f *fakeLogger) Log(scope string, limit int) (string, error) {
+	f.scopeArg = scope
+	f.limitArg = limit
+	return f.out, f.err
+}
+
+func sampleModelWithLogger() (Model, *fakeRepo, *fakeLogger) {
 	repo := &fakeRepo{status: []git.FileChange{
 		{Path: "a.go", Status: 'M', Staged: false},
 		{Path: "b.go", Status: '?', Staged: false},
 		{Path: "c.go", Status: 'A', Staged: true},
 	}}
-	return New(repo), repo
+	lg := &fakeLogger{out: "abc123 feat: x\n"}
+	return New(repo, lg), repo, lg
+}
+
+func sampleModel() (Model, *fakeRepo) {
+	m, repo, _ := sampleModelWithLogger()
+	return m, repo
 }
 
 func TestNewLoadsFilesAndPreMarksStaged(t *testing.T) {
@@ -74,7 +93,7 @@ func TestNewLoadsFilesAndPreMarksStaged(t *testing.T) {
 }
 
 func TestNewPropagatesStatusError(t *testing.T) {
-	m := New(&fakeRepo{statusErr: errors.New("boom")})
+	m := New(&fakeRepo{statusErr: errors.New("boom")}, &fakeLogger{})
 	if m.err == nil {
 		t.Error("expected err set when Status fails")
 	}
@@ -388,6 +407,46 @@ func TestLogHiddenOnNarrowTerminal(t *testing.T) {
 	m.width = 100
 	if !m.logVisible() {
 		t.Error("log should show at 100 cols")
+	}
+}
+
+func TestInitLoadsLog(t *testing.T) {
+	m, _, lg := sampleModelWithLogger()
+	cmd := m.Init()
+	if cmd == nil {
+		t.Fatal("Init should return a log-load command")
+	}
+	msg := cmd()
+	ll, ok := msg.(logLoadedMsg)
+	if !ok {
+		t.Fatalf("expected logLoadedMsg, got %T", msg)
+	}
+	if ll.content != lg.out {
+		t.Errorf("log content = %q, want %q", ll.content, lg.out)
+	}
+	if lg.scopeArg != "current" {
+		t.Errorf("scope = %q, want current", lg.scopeArg)
+	}
+}
+
+func TestLogLoadedMsgStored(t *testing.T) {
+	m, _ := sampleModel()
+	next, _ := m.Update(logLoadedMsg{content: "X\n"})
+	dm := next.(Model)
+	if dm.logContent != "X\n" {
+		t.Errorf("logContent = %q", dm.logContent)
+	}
+	if dm.logLoading {
+		t.Error("logLoading should clear once the log arrives")
+	}
+}
+
+func TestLogLoadErrorStored(t *testing.T) {
+	m, _ := sampleModel()
+	next, _ := m.Update(logLoadedMsg{err: errors.New("boom")})
+	dm := next.(Model)
+	if dm.logErr == nil {
+		t.Error("logErr should be set")
 	}
 }
 

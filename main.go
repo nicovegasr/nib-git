@@ -22,8 +22,13 @@ func (gitRepo) Status() ([]git.FileChange, error) { return git.Status() }
 func (gitRepo) Stage(files []string) error        { return git.Stage(files) }
 func (gitRepo) Commit(subject string) error       { return git.Commit(subject) }
 
+// gitLogger adapts the git package to the ui.Logger port injected into the model.
+type gitLogger struct{}
+
+func (gitLogger) Log(scope string, limit int) (string, error) { return git.Log(scope, limit) }
+
 func main() {
-	model := ui.New(gitRepo{})
+	model := ui.New(gitRepo{}, gitLogger{})
 	p := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "nib:", err)

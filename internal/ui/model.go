@@ -26,6 +26,12 @@ type Repo interface {
 	Commit(subject string) error
 }
 
+// Logger is the narrow slice of git the log panel needs. Optional and read-only
+// (ADR-0005): keeping it separate from Repo lets /settings disable it later.
+type Logger interface {
+	Log(scope string, limit int) (string, error)
+}
+
 // zone is the part of the UI currently driving the keyboard.
 type zone int
 
@@ -37,6 +43,12 @@ const (
 
 // commitDoneMsg reports the outcome of a commit attempt.
 type commitDoneMsg struct{ err error }
+
+// logLoadedMsg carries the result of an async git-log fetch.
+type logLoadedMsg struct {
+	content string
+	err     error
+}
 
 // Model is the root application state.
 type Model struct {
@@ -56,13 +68,21 @@ type Model struct {
 	height  int
 	showLog bool // git-log panel enabled (Phase 4 /settings will toggle it)
 
+	logger     Logger
+	logScope   string // "current" | "all"; "custom" deferred to Phase 4
+	logContent string
+	logErr     error
+	logLoading bool
+
 	shortcuts map[string]int // type shortcut key -> index into commit.Types
 }
 
 // New builds the initial model and loads the working tree through repo.
-func New(repo Repo) Model {
+func New(repo Repo, logger Logger) Model {
 	m := Model{
 		repo:      repo,
+		logger:    logger,
+		logScope:  "current",
 		staged:    map[string]bool{},
 		shortcuts: typeShortcuts(),
 	}
@@ -90,8 +110,19 @@ func typeShortcuts() map[string]int {
 	return m
 }
 
+const logFetchLimit = 100 // fetch a generous window; View crops to the panel height
+
+// loadLog fetches the git log off the UI goroutine.
+func (m Model) loadLog() tea.Cmd {
+	logger, scope := m.logger, m.logScope
+	return func() tea.Msg {
+		out, err := logger.Log(scope, logFetchLimit)
+		return logLoadedMsg{content: out, err: err}
+	}
+}
+
 // Init implements tea.Model.
-func (m Model) Init() tea.Cmd { return nil }
+func (m Model) Init() tea.Cmd { return m.loadLog() }
 
 // Update implements tea.Model.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -119,6 +150,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.cursor >= len(files) {
 			m.cursor = 0
 		}
+		return m, nil
+	case logLoadedMsg:
+		m.logLoading = false
+		m.logContent = msg.content
+		m.logErr = msg.err
 		return m, nil
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
