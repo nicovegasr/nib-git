@@ -150,7 +150,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.cursor >= len(files) {
 			m.cursor = 0
 		}
-		return m, nil
+		m.logLoading = true
+		return m, m.loadLog()
 	case logLoadedMsg:
 		m.logLoading = false
 		m.logContent = msg.content

@@ -337,6 +337,29 @@ func TestCommitFailureKeepsOpenWithError(t *testing.T) {
 	}
 }
 
+func TestCommitSuccessReloadsLog(t *testing.T) {
+	m, _, lg := sampleModelWithLogger()
+	lg.out = "new log\n"
+
+	next, cmd := m.Update(commitDoneMsg{})
+	dm := next.(Model)
+
+	if !dm.logLoading {
+		t.Error("commit success should mark the log as reloading")
+	}
+	if cmd == nil {
+		t.Fatal("commit success should return a reload command")
+	}
+	msg := cmd()
+	if _, isQuit := msg.(tea.QuitMsg); isQuit {
+		t.Fatal("commit success must not quit")
+	}
+	ll, ok := msg.(logLoadedMsg)
+	if !ok || ll.content != "new log\n" {
+		t.Errorf("expected reloaded log, got %T %+v", msg, msg)
+	}
+}
+
 func TestQuitKeys(t *testing.T) {
 	m, _ := sampleModel()
 	if _, cmd := send(m, "q"); cmd == nil {
