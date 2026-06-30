@@ -52,6 +52,10 @@ type Model struct {
 	flash    string // transient success feedback, cleared on the next keystroke
 	err      error
 
+	width   int
+	height  int
+	showLog bool // git-log panel enabled (Phase 4 /settings will toggle it)
+
 	shortcuts map[string]int // type shortcut key -> index into commit.Types
 }
 
@@ -62,6 +66,7 @@ func New(repo Repo) Model {
 		staged:    map[string]bool{},
 		shortcuts: typeShortcuts(),
 	}
+	m.showLog = true
 	files, err := repo.Status()
 	if err != nil {
 		m.err = err
@@ -114,6 +119,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.cursor >= len(files) {
 			m.cursor = 0
 		}
+		return m, nil
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 		return m, nil
 	case tea.KeyMsg:
 		return m.updateKey(msg)
@@ -315,6 +324,21 @@ func (m Model) commit() tea.Cmd {
 // hitTest() reads it, so a click can never drift from what is rendered.
 
 const headerRows = 2 // title + blank line above the file list
+
+const minWidthForLog = 80 // below this the minimal flow keeps the full width
+
+// logVisible reports whether the git-log panel should be drawn: enabled and the
+// terminal is wide enough that the minimal flow is not squeezed.
+func (m Model) logVisible() bool {
+	return m.showLog && m.width >= minWidthForLog
+}
+
+// leftColWidth splits the two-column band in half: files left, log right.
+//
+//nolint:unused // wired into hitTest/View in the next task of this phase.
+func (m Model) leftColWidth() int {
+	return m.width / 2
+}
 
 type layout struct {
 	filesStart int // row of the first file

@@ -370,6 +370,27 @@ func TestQInTypeZoneDoesNotQuit(t *testing.T) {
 	}
 }
 
+func TestWindowSizeStored(t *testing.T) {
+	m, _ := sampleModel()
+	next, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	dm := next.(Model)
+	if dm.width != 120 || dm.height != 40 {
+		t.Errorf("size not stored: %d x %d", dm.width, dm.height)
+	}
+}
+
+func TestLogHiddenOnNarrowTerminal(t *testing.T) {
+	m, _ := sampleModel() // showLog default true
+	m.width = 70
+	if m.logVisible() {
+		t.Error("log must hide under 80 cols")
+	}
+	m.width = 100
+	if !m.logVisible() {
+		t.Error("log should show at 100 cols")
+	}
+}
+
 // click builds a left-button release at (x, y) and applies it.
 func click(m Model, x, y int) Model {
 	next, _ := m.Update(tea.MouseMsg{
