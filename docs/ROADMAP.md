@@ -41,8 +41,10 @@ than the Source Control panel or lazygit/gitui (both tried, neither fit). It is
   the row geometry shared by `View()` and `hitTest()`. `▸` marks the active zone
   + contextual help line. See the closed grill decisions in this file's history
   and `internal/ui/model_test.go`.
-- [ ] **Phase 3 — git-log panel.** Optional right-side log, `LogScope`
-  current/all/custom. Off-by-toggle.
+- [x] **Phase 3 — git-log panel.** Optional right-side log, `LogScope`
+  current/all. Off-by-toggle. Panel is **read-only** y se auto-oculta bajo 80
+  columnas; la app es ahora una **sesión persistente** (un commit refresca el
+  estado en vez de cerrar — ADR-0007). El scope `custom` queda diferido a Fase 4.
 - [ ] **Phase 4 — `/settings`.** Command palette + persisted TOML
   (`~/.config/nib/settings.toml`), all toggles live.
 - [ ] **Phase 5 — `/audit`.** Render hotspots, `--days`/`--exclude`, threshold
