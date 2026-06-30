@@ -141,6 +141,8 @@ func (m Model) updateFiles(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.focus = zoneType
 	case "shift+tab":
 		m.focus = zoneMessage
+	case "esc":
+		return m, tea.Quit
 	case "enter":
 		return m, m.commit()
 	}
@@ -174,8 +176,6 @@ func (m Model) updateType(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch key.String() {
-	case "q":
-		return m, tea.Quit
 	case "down", "enter", " ":
 		m.dropOpen = true
 		m.dropIdx = m.typeIdx

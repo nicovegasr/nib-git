@@ -311,6 +311,51 @@ func TestQuitKeys(t *testing.T) {
 	}
 }
 
+func TestEscQuitsFromFilesZone(t *testing.T) {
+	m, _ := sampleModel() // focus = files
+	if _, cmd := send(m, "esc"); cmd == nil {
+		t.Error("esc in the files zone (top) should quit")
+	}
+}
+
+func TestEscWalksBackThenQuits(t *testing.T) {
+	m, _ := sampleModel()
+	m, _ = send(m, "tab") // -> type
+	m, _ = send(m, "tab") // -> message
+	m, _ = send(m, "esc") // -> type
+	if m.focus != zoneType {
+		t.Fatalf("esc from message should step to type, got %v", m.focus)
+	}
+	m, _ = send(m, "esc") // -> files
+	if m.focus != zoneFiles {
+		t.Fatalf("esc from type should step to files, got %v", m.focus)
+	}
+	if _, cmd := send(m, "esc"); cmd == nil {
+		t.Error("esc at the files zone should quit")
+	}
+}
+
+func TestQDoesNotQuitWhileTyping(t *testing.T) {
+	m, _ := sampleModel()
+	m, _ = send(m, "tab")
+	m, _ = send(m, "tab") // message zone
+	next, cmd := send(m, "q")
+	if cmd != nil {
+		t.Error("q in the message zone is text, must not quit")
+	}
+	if next.message != "q" {
+		t.Errorf("q should be typed, message = %q", next.message)
+	}
+}
+
+func TestQInTypeZoneDoesNotQuit(t *testing.T) {
+	m, _ := sampleModel()
+	m, _ = send(m, "tab") // type zone
+	if _, cmd := send(m, "q"); cmd != nil {
+		t.Error("q should quit only in the files zone")
+	}
+}
+
 // click builds a left-button release at (x, y) and applies it.
 func click(m Model, x, y int) Model {
 	next, _ := m.Update(tea.MouseMsg{
