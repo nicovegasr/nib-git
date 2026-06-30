@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/nicovegasr/nib-git/internal/commit"
 	"github.com/nicovegasr/nib-git/internal/git"
@@ -457,14 +458,28 @@ func typeBoxWidth(name string) int {
 	return len([]rune(name)) + 8
 }
 
-// View implements tea.Model. See docs/ux-mockups.html for the target layout.
-func (m Model) View() string {
-	if m.err != nil {
-		return "nib: " + m.err.Error() + "\n"
-	}
+var dimStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
-	var b strings.Builder
-	b.WriteString("  nib — cambios\n\n")
+func dim(s string) string { return dimStyle.Render(s) }
+
+// truncate hard-caps a plain string to w display columns with an ellipsis.
+// Used only on plain (un-styled) cells; the dim status strings are short.
+func truncate(s string, w int) string {
+	if w <= 0 {
+		return ""
+	}
+	r := []rune(s)
+	if len(r) <= w {
+		return s
+	}
+	if w == 1 {
+		return "…"
+	}
+	return string(r[:w-1]) + "…"
+}
+
+func (m Model) fileLines() []string {
+	lines := make([]string, 0, len(m.files))
 	for i, f := range m.files {
 		marker := " "
 		if m.focus == zoneFiles && i == m.cursor {
@@ -474,7 +489,63 @@ func (m Model) View() string {
 		if m.staged[f.Path] {
 			mark = "✓"
 		}
-		fmt.Fprintf(&b, "%s %s %c %s\n", marker, mark, f.Status, f.Path)
+		lines = append(lines, fmt.Sprintf("%s %s %c %s", marker, mark, f.Status, f.Path))
+	}
+	return lines
+}
+
+// logBody returns the log lines or a single dimmed status line.
+func (m Model) logBody() []string {
+	switch {
+	case m.logLoading:
+		return []string{dim("cargando…")}
+	case m.logErr != nil:
+		return []string{dim("log no disponible")}
+	}
+	trimmed := strings.TrimRight(m.logContent, "\n")
+	if trimmed == "" {
+		return []string{dim("(sin commits)")}
+	}
+	return strings.Split(trimmed, "\n")
+}
+
+func (m Model) logLines(band int) []string {
+	lines := append([]string{dim("GIT LOG · " + m.logScope)}, m.logBody()...)
+	if len(lines) > band {
+		lines = lines[:band]
+	}
+	return lines
+}
+
+// View implements tea.Model. See docs/ux-mockups.html for the target layout.
+func (m Model) View() string {
+	if m.err != nil {
+		return "nib: " + m.err.Error() + "\n"
+	}
+
+	var b strings.Builder
+	b.WriteString("  nib — cambios\n\n")
+
+	l := m.layout()
+	left := m.fileLines()
+	if m.logVisible() {
+		right := m.logLines(l.bandHeight)
+		leftW := m.leftColWidth()
+		rightW := m.width - leftW - 3 // " │ "
+		for i := 0; i < l.bandHeight; i++ {
+			lc, rc := "", ""
+			if i < len(left) {
+				lc = left[i]
+			}
+			if i < len(right) {
+				rc = right[i]
+			}
+			fmt.Fprintf(&b, "%-*s │ %s\n", leftW, truncate(lc, leftW), truncate(rc, rightW))
+		}
+	} else {
+		for _, line := range left {
+			b.WriteString(line + "\n")
+		}
 	}
 
 	b.WriteString("\n")
@@ -483,7 +554,11 @@ func (m Model) View() string {
 	if m.dropOpen {
 		b.WriteString(m.dropdownView())
 	}
-	fmt.Fprintf(&b, "\n %s\n", m.helpLine())
+	help := m.helpLine()
+	if m.flash != "" {
+		help = m.flash + " · " + help
+	}
+	fmt.Fprintf(&b, "\n %s\n", help)
 	return b.String()
 }
 
