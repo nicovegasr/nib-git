@@ -371,25 +371,42 @@ func (m Model) logVisible() bool {
 }
 
 // leftColWidth splits the two-column band in half: files left, log right.
-//
-//nolint:unused // wired into hitTest/View in the next task of this phase.
 func (m Model) leftColWidth() int {
 	return m.width / 2
+}
+
+const reservedBelow = 4 // blank + commit line + blank + help line under the band
+
+// logRows is how many rows the log column may fill, derived from terminal height.
+func (m Model) logRows() int {
+	r := m.height - headerRows - reservedBelow
+	if r < 0 {
+		return 0
+	}
+	return r
 }
 
 type layout struct {
 	filesStart int // row of the first file
 	fileCount  int
+	bandHeight int // rows the two-column (files ‖ log) band occupies
 	commitRow  int // the "[ type ▾ ] message" line (type and message share it)
 	dropStart  int // first dropdown item row (only meaningful when open)
 }
 
 func (m Model) layout() layout {
 	n := len(m.files)
-	commitRow := headerRows + n + 1 // one blank line between files and the commit line
+	band := n
+	if m.logVisible() {
+		if lr := m.logRows(); lr > band {
+			band = lr
+		}
+	}
+	commitRow := headerRows + band + 1 // one blank line between the band and the commit line
 	return layout{
 		filesStart: headerRows,
 		fileCount:  n,
+		bandHeight: band,
 		commitRow:  commitRow,
 		dropStart:  commitRow + 1,
 	}
@@ -415,6 +432,9 @@ type hit struct {
 func (m Model) hitTest(x, y int) hit {
 	l := m.layout()
 	if y >= l.filesStart && y < l.filesStart+l.fileCount {
+		if m.logVisible() && x >= m.leftColWidth() {
+			return hit{kind: hitNone} // clicked the read-only log column
+		}
 		return hit{hitFile, y - l.filesStart}
 	}
 	if m.dropOpen && y >= l.dropStart && y < l.dropStart+len(commit.Types) {

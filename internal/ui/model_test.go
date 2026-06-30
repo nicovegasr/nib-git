@@ -514,6 +514,32 @@ func TestHitTestDropItemsOnlyWhenOpen(t *testing.T) {
 	}
 }
 
+func TestHitTestLogColumnIgnored(t *testing.T) {
+	m, _ := sampleModel()
+	m.width = 120 // logVisible: showLog true and >= 80
+	l := m.layout()
+	if got := m.hitTest(0, l.filesStart); got.kind != hitFile {
+		t.Errorf("left column file row -> %+v, want hitFile", got)
+	}
+	if got := m.hitTest(80, l.filesStart); got.kind != hitNone {
+		t.Errorf("log column click -> %+v, want hitNone", got)
+	}
+}
+
+func TestHitTestPaddingBelowFilesNotAFile(t *testing.T) {
+	m, _ := sampleModel()
+	m.width = 120
+	m.height = 40 // logRows tall -> band taller than the file list
+	l := m.layout()
+	if l.bandHeight <= l.fileCount {
+		t.Fatalf("expected band taller than files, band=%d files=%d", l.bandHeight, l.fileCount)
+	}
+	row := l.filesStart + l.fileCount + 1 // inside the band, below the files
+	if got := m.hitTest(0, row); got.kind == hitFile {
+		t.Errorf("padding row should not be a file hit, got %+v", got)
+	}
+}
+
 func TestMouseClickFileTogglesStageAndFocus(t *testing.T) {
 	m, _ := sampleModel()
 	l := m.layout()
